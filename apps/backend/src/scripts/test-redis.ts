@@ -1,11 +1,11 @@
 import dotenv from "dotenv";
-import { getRedis, pingRedis } from "../config/redis";
+import { getRedis, isUsingLocalRedis, pingRedis } from "../config/redis";
 
 dotenv.config();
 
 const run = async () => {
   console.log("Redis test:");
-  console.log("  rest url:", process.env.UPSTASH_REDIS_REST_URL || "(not set)");
+  console.log("  driver:", isUsingLocalRedis() ? "local TCP" : "Upstash REST");
 
   const pong = await pingRedis();
   console.log("  ping:", pong);

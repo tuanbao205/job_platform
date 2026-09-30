@@ -40,6 +40,7 @@
     "nodemailer": "^9.0.5",
     "parser": "^0.1.4",
     "pg": "^8.23.0",
+    "redis": "^5.12.1",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.31",
     "zod": "^4.4.3"

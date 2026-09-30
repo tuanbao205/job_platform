@@ -1,6 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import type { NextFunction, Request, Response } from "express";
-import { getRedis } from "../../config/redis";
+import { getUpstashRedis, isUsingLocalRedis } from "../../config/redis";
 import { AppError } from "../errors/app-error";
 
 export type RateLimitOptions = {
@@ -20,8 +20,9 @@ const getLimitFactor = () => {
 };
 
 const limiters = new Map<string, Ratelimit>();
+const localWindows = new Map<string, number[]>();
 
-// Ratelimit tao lazy: getRedis() nem loi neu thieu env, khong nen nem ngay luc import module.
+// Initialize Upstash lazily so missing credentials do not fail during module import.
 const getLimiter = (options: RateLimitOptions) => {
   const cached = limiters.get(options.name);
 
@@ -30,7 +31,7 @@ const getLimiter = (options: RateLimitOptions) => {
   }
 
   const limiter = new Ratelimit({
-    redis: getRedis(),
+    redis: getUpstashRedis(),
     limiter: Ratelimit.slidingWindow(
       Math.floor(options.limit * getLimitFactor()),
       `${options.windowSeconds} s`
@@ -41,6 +42,34 @@ const getLimiter = (options: RateLimitOptions) => {
 
   limiters.set(options.name, limiter);
   return limiter;
+};
+
+const limitLocally = (options: RateLimitOptions, key: string) => {
+  const limit = Math.floor(options.limit * getLimitFactor());
+  const windowMs = options.windowSeconds * 1000;
+  const now = Date.now();
+  const bucketKey = `${options.name}:${key}`;
+  const timestamps = (localWindows.get(bucketKey) ?? []).filter(
+    (timestamp) => timestamp > now - windowMs,
+  );
+  const success = timestamps.length < limit;
+
+  if (success) {
+    timestamps.push(now);
+  }
+
+  if (timestamps.length) {
+    localWindows.set(bucketKey, timestamps);
+  } else {
+    localWindows.delete(bucketKey);
+  }
+
+  return {
+    success,
+    limit,
+    remaining: Math.max(limit - timestamps.length, 0),
+    reset: (timestamps[0] ?? now) + windowMs,
+  };
 };
 
 const setHeaders = (
@@ -65,15 +94,24 @@ export const rateLimit = (options: RateLimitOptions) => {
       return;
     }
 
-    let result: Awaited<ReturnType<Ratelimit["limit"]>>;
+    let result: {
+      success: boolean;
+      limit: number;
+      remaining: number;
+      reset: number;
+    };
 
-    try {
-      result = await getLimiter(options).limit(key);
-    } catch (error) {
-      // Fail-open: Redis chet khong duoc keo sap toan bo auth.
-      console.error(`Rate limit "${options.name}" unavailable:`, error);
-      next();
-      return;
+    if (isUsingLocalRedis()) {
+      result = limitLocally(options, key);
+    } else {
+      try {
+        result = await getLimiter(options).limit(key);
+      } catch (error) {
+        // Fail-open: Redis chet khong duoc keo sap toan bo auth.
+        console.error(`Rate limit "${options.name}" unavailable:`, error);
+        next();
+        return;
+      }
     }
 
     setHeaders(res, result);

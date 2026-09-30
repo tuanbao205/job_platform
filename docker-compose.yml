@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: job_platform
     ports:
-      - "5433:5432"
+      - "55432:5432"
     volumes:
       - job_platform_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,6 +25,14 @@ services:
       - "6379:6379"
     volumes:
       - job_platform_redis_data:/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: job-platform-mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
 volumes:
   job_platform_postgres_data:
