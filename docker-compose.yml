@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: job-platform-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: job_platform
+    ports:
+      - "5433:5432"
+    volumes:
+      - job_platform_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d job_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: job-platform-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - job_platform_redis_data:/data
+
+volumes:
+  job_platform_postgres_data:
+  job_platform_redis_data:

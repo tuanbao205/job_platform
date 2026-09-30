@@ -1,0 +1,147 @@
+# Job Platform - Monorepo FE/BE
+
+Repo này đã tách rõ:
+- `apps/frontend`: Next.js public + candidate + recruiter (Tailwind CSS + shadcn/ui)
+- `apps/frontend-admin`: Next.js admin, app riêng để không ship code quản trị lên site public
+- `apps/backend`: Express.js + TypeORM + PostgreSQL
+
+Mục tiêu: dev clone về là chạy nhanh, chia nhóm làm song song, ít đụng code nhau.
+
+## 1) Yêu cầu máy
+
+- Node.js LTS (khuyên dùng Node 20+)
+- npm 10+
+- PostgreSQL (local hoặc Supabase)
+
+## 2) Cách chạy nhanh (khuyến nghị)
+
+Từ thư mục gốc `job-platform`:
+
+```bash
+npm install
+npm run dev:frontend
+npm run dev:frontend-admin
+npm run dev:backend
+```
+
+- Frontend public: http://localhost:3000
+- Frontend admin: http://localhost:3001
+
+## 3) Cách chạy theo từng app (nếu muốn tách riêng FE/BE)
+
+### Frontend (public / candidate / recruiter)
+
+```bash
+cd apps/frontend
+npm install
+npm run dev
+```
+
+### Frontend admin
+
+```bash
+cd apps/frontend-admin
+npm install
+npm run dev
+```
+
+### Backend
+
+```bash
+cd apps/backend
+npm install
+npm run dev
+```
+
+## 4) Biến môi trường (env)
+
+### Backend
+
+```bash
+cp apps/backend/.env.example apps/backend/.env
+```
+
+Điền thông tin DB vào `apps/backend/.env`:
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER` (hoặc `DB_USERNAME`)
+- `DB_PASSWORD`
+- `DB_NAME`
+- `DB_SSL` (`true` nếu dùng Supabase)
+- `SUPABASE_URL` (dùng cho Storage upload ảnh)
+- `SUPABASE_SERVICE_ROLE_KEY` (key server-side, không đưa lên frontend)
+- `SUPABASE_STORAGE_BUCKET` (ví dụ `job-platform-assets`)
+
+### Frontend (cả `frontend` và `frontend-admin`)
+
+```bash
+cp apps/frontend/.env.example apps/frontend/.env
+cp apps/frontend-admin/.env.example apps/frontend-admin/.env
+```
+
+Điền:
+- `NEXT_PUBLIC_API_BASE_URL` (ví dụ `http://localhost:4000`)
+
+## 5) Build
+
+Từ root:
+
+```bash
+npm run build:frontend
+npm run build:frontend-admin
+npm run build:backend
+```
+
+## 6) Cấu trúc thư mục đã chia sẵn theo nghiệp vụ
+
+### Frontend public (`apps/frontend/src`)
+
+Chi tiết Group 3: `apps/frontend/README.md`.
+
+**3 module tách biệt — mỗi dev chỉ sửa 1 folder:**
+
+| Dev | Folder | Route |
+|-----|--------|-------|
+| Bình | `modules/candidate/` | `/candidate/profile` |
+| Lợi | `modules/resume/` | `/candidate/resume` |
+| Mạnh | `modules/applications/` | `/candidate/applications` |
+
+Shared: `services/http.ts`, `lib/*`, `components/ui`, `components/layout`, `app/(public)`, `app/(recruiter)`.
+
+### Frontend admin (`apps/frontend-admin/src`)
+
+Cùng convention với `apps/frontend`, chỉ chứa màn quản trị:
+
+- `app/(admin)`: dashboard / moderation / account / system
+- `app/(public)/auth/login`: đăng nhập admin
+- `features/admin`: state/logic admin
+- `components/*`, `services`, `hooks`, `types`: giống frontend public, code tách hẳn (bundle riêng)
+
+### Backend (`apps/backend/src`)
+
+- `config`: cấu hình hệ thống
+- `common`: constants, dto, guards, middlewares, utils dùng chung
+- `database/entities`: TypeORM entities
+- `database/migrations`: migration scripts
+- `database/seeds`: seed data
+- `database/repositories`: custom repositories
+- `modules/auth`: đăng ký, đăng nhập, xác thực
+- `modules/users`, `roles`, `permissions`: tài khoản & phân quyền (Nhóm 1)
+- `modules/companies`, `job-categories`, `jobs`, `skills`: công ty & tuyển dụng (Nhóm 2)
+- `modules/candidate-profiles`, `resumes`, `educations`, `work-experiences`, `applications`, `saved-jobs`: ứng viên & ứng tuyển (Nhóm 3)
+- `modules/notifications`, `system-logs`, `admin`, `statistics`: admin & hệ thống (Nhóm 4)
+- `routes`: gom route cấp hệ thống
+- `docs`: tài liệu API, nghiệp vụ
+- `tests`: test backend
+
+## 7) Mapping ownership theo nhóm (để chia task không chồng chéo)
+
+- Nhóm 1: `users`, `roles`, `permissions`, `role_permissions`
+- Nhóm 2: `companies`, `job_categories`, `jobs`, `job_skills`
+- Nhóm 3: `candidate_profiles`, `resumes`, `educations`, `work_experiences`, `skills`, `candidate_skills`, `applications`, `saved_jobs`
+- Nhóm 4: `notifications`, `system_logs` + chức năng admin
+
+Nguyên tắc: bảng có owner chính, nhóm khác được dùng FK nhưng không tự ý đổi schema bảng owner khi chưa thống nhất.
+
+---
+

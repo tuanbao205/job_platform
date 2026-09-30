@@ -1,0 +1,233 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { googleLogout } from "@react-oauth/google";
+import { ChevronDown, LogOut, Menu } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ROUTES } from "@/constants/routes";
+import { resolveStorageUrl } from "@/lib/utils";
+import { authApi } from "@/services/auth.service";
+import { notificationsApi } from "@/modules/notifications/api";
+import { NotificationDropdown } from "@/modules/notifications/components/notification-dropdown";
+import { useRecruiterCompany } from "./recruiter-company-context";
+import { CandidateSearchBar } from "@/components/layout/candidate-search-bar";
+
+/** Polling 30s + lắng nghe "jp-notifications-change" (đọc/xóa từ trang thông báo) */
+function useUnreadNotificationCount(): number {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refresh = () => {
+      notificationsApi
+        .unreadCount()
+        .then((res) => {
+          if (!cancelled) setCount(res.data.unreadCount);
+        })
+        .catch(() => {
+          // Bỏ qua — badge chỉ là tiện ích hiển thị
+        });
+    };
+
+    refresh();
+    const interval = setInterval(refresh, 30_000);
+    window.addEventListener("jp-notifications-change", refresh);
+    window.addEventListener("jp-auth-change", refresh);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener("jp-notifications-change", refresh);
+      window.removeEventListener("jp-auth-change", refresh);
+    };
+  }, []);
+
+  return count;
+}
+
+type RecruiterHeaderProps = {
+  menuOpen: boolean;
+  onOpenMenu: () => void;
+};
+
+const navItems = [
+  { href: ROUTES.home, label: "Trang chủ" },
+  { href: ROUTES.jobs, label: "Việc làm" },
+  { href: ROUTES.companies, label: "Công ty" },
+];
+
+export function RecruiterHeader({ menuOpen, onOpenMenu }: RecruiterHeaderProps) {
+  const router = useRouter();
+  const { company, loading: companyLoading } = useRecruiterCompany();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const companyName = companyLoading ? "Đang tải..." : company?.name ?? "Chưa có công ty";
+  const companyInitials = company?.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase() || "CT";
+
+  const unreadCount = useUnreadNotificationCount();
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await authApi.logout();
+    } catch {
+      // Local credentials are always cleared by authApi.
+    } finally {
+      googleLogout();
+      router.replace(ROUTES.auth.login);
+    }
+  };
+
+  return (
+    <header className="sticky top-0 z-50 shrink-0 border-b border-slate-200 bg-white">
+      <nav
+        className="flex h-[68px] w-full items-center"
+        aria-label="Điều hướng chính"
+      >
+        {/* Khối bên trái: Logo JobPlatform gióng thẳng với Sidebar (w-64 trên lg) */}
+        <div className="flex h-full shrink-0 items-center px-4 sm:px-6 lg:w-64 lg:border-r lg:border-slate-200">
+          {/* Mobile: nút mở recruiter sidebar, ẩn từ breakpoint lg. */}
+          <button
+            type="button"
+            onClick={onOpenMenu}
+            className="mr-2 rounded-md p-2 text-slate-700 hover:bg-slate-100 lg:hidden"
+            aria-label="Mở menu quản trị"
+            aria-controls="recruiter-mobile-navigation"
+            aria-expanded={menuOpen}
+          >
+            <Menu className="size-5" />
+          </button>
+
+          <Link
+            href={ROUTES.recruiter.root}
+            className="flex shrink-0 items-center gap-2"
+            aria-label="JobPlatform - Tổng quan tuyển dụng"
+          >
+            <Image src="/logo.png" alt="JobPlatform" width={40} height={40} priority />
+            <span className="text-[18px] font-bold tracking-[-0.03em] text-blue-900">
+              Job Platform
+            </span>
+          </Link>
+        </div>
+
+        {/* Khối bên phải: Khớp 1:1 với chiều rộng của layout nội dung */}
+        <div className="flex h-full min-w-0 flex-1 items-center justify-between px-4 md:px-5 lg:px-6">
+          {/* Desktop/tablet: menu điều hướng bắt đầu thẳng hàng với lề trái của layout */}
+          <div className="hidden h-full items-center gap-8 md:flex lg:gap-10">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="relative flex h-full items-center text-sm font-medium text-slate-700 transition-colors hover:text-primary"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Các thao tác bên phải dùng chung cho desktop và mobile. */}
+          <div className="ml-auto flex items-center gap-3">
+            {/* Desktop lớn: ô tìm kiếm, ẩn dưới breakpoint xl. */}
+            <CandidateSearchBar className="hidden xl:block" />
+
+            <NotificationDropdown
+              baseHref={ROUTES.recruiter.notifications}
+              unreadCount={unreadCount}
+            />
+
+            {/* Mobile chỉ hiện avatar; từ sm trở lên hiện thêm tên và mũi tên. */}
+            <div className="relative ml-1">
+            <button
+              type="button"
+              onClick={() => setAccountOpen((open) => !open)}
+              className="flex items-center gap-2 rounded-md px-1.5 py-1 transition hover:bg-slate-100"
+              aria-expanded={accountOpen}
+              aria-haspopup="menu"
+            >
+              <RecruiterAvatar
+                logo={company?.logo}
+                companyName={company?.name}
+                initials={companyInitials}
+              />
+              <span
+                className="hidden max-w-32 truncate text-xs font-medium text-slate-900 sm:block"
+                title={company?.name}
+              >
+                {companyName}
+              </span>
+              <ChevronDown
+                className={`hidden size-3.5 text-slate-500 transition-transform sm:block ${accountOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {accountOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-[calc(100%+8px)] z-50 w-48 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <LogOut className="size-4" />
+                  {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      </nav>
+    </header>
+  );
+}
+
+function RecruiterAvatar({
+  logo,
+  companyName,
+  initials,
+}: {
+  logo?: string | null;
+  companyName?: string;
+  initials: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const logoUrl = resolveStorageUrl(logo);
+
+  if (logoUrl && !failed) {
+    return (
+      <span className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-full border border-slate-200 bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoUrl}
+          alt={companyName ?? "Công ty"}
+          className="size-full object-cover"
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className="grid size-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-slate-300 to-slate-600 text-[10px] font-semibold text-white"
+    >
+      {initials}
+    </span>
+  );
+}

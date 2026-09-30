@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+
+# Smoke test scripts local (chạy tay, không commit)
+tests/smoke/
+
+*.md
+/docs/*

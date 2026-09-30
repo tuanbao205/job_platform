@@ -1,0 +1,80 @@
+import { http } from "@/services/http";
+import type { ApiSuccess } from "@/types/api";
+import type {
+  AccountUser,
+  CandidateProfile,
+  ChangePasswordInput,
+  Education,
+  UpdateAccountInput,
+  UpdateCandidateProfileInput,
+  WorkExperience,
+} from "./types";
+
+export const candidateApi = {
+  /** G1 account — fullName / avatar (không lẫn vào PUT /candidates/me) */
+  getAccountMe: () => http<ApiSuccess<AccountUser>>("/users/me"),
+
+  updateAccountMe: (body: UpdateAccountInput) =>
+    http<ApiSuccess<AccountUser>>("/users/me", { method: "PATCH", body }),
+
+  uploadAvatar: (file: File) => {
+    const body = new FormData();
+    body.append("avatar", file);
+    return http<ApiSuccess<{ avatar: string }>>("/users/me/avatar", {
+      method: "POST",
+      body,
+    });
+  },
+
+  deleteAvatar: () =>
+    http<ApiSuccess<{ avatar: null }>>("/users/me/avatar", { method: "DELETE" }),
+
+  changePassword: (body: ChangePasswordInput) =>
+    http<ApiSuccess<null>>("/users/me/password", { method: "PATCH", body }),
+
+  sendEmailVerificationOtp: () =>
+    http<ApiSuccess<{ email: string; cooldownSeconds: number }>>(
+      "/users/me/email/send-otp",
+      { method: "POST" },
+    ),
+
+  verifyEmail: (code: string) =>
+    http<ApiSuccess<{ emailVerifiedAt: string }>>(
+      "/users/me/email/verify-otp",
+      { method: "POST", body: { code } },
+    ),
+
+  getMe: () => http<ApiSuccess<CandidateProfile>>("/candidates/me"),
+
+  updateMe: (body: UpdateCandidateProfileInput) =>
+    http<ApiSuccess<CandidateProfile>>("/candidates/me", { method: "PUT", body }),
+
+  listEducations: () => http<ApiSuccess<Education[]>>("/candidates/me/educations"),
+
+  createEducation: (body: Partial<Education>) =>
+    http<ApiSuccess<Education>>("/candidates/me/educations", { method: "POST", body }),
+
+  updateEducation: (id: string, body: Partial<Education>) =>
+    http<ApiSuccess<Education>>(`/candidates/me/educations/${id}`, { method: "PUT", body }),
+
+  deleteEducation: (id: string) =>
+    http<ApiSuccess<null>>(`/candidates/me/educations/${id}`, { method: "DELETE" }),
+
+  listWorkExperiences: () =>
+    http<ApiSuccess<WorkExperience[]>>("/candidates/me/work-experiences"),
+
+  createWorkExperience: (body: Partial<WorkExperience>) =>
+    http<ApiSuccess<WorkExperience>>("/candidates/me/work-experiences", {
+      method: "POST",
+      body,
+    }),
+
+  updateWorkExperience: (id: string, body: Partial<WorkExperience>) =>
+    http<ApiSuccess<WorkExperience>>(`/candidates/me/work-experiences/${id}`, {
+      method: "PUT",
+      body,
+    }),
+
+  deleteWorkExperience: (id: string) =>
+    http<ApiSuccess<null>>(`/candidates/me/work-experiences/${id}`, { method: "DELETE" }),
+};

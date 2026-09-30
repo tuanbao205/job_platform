@@ -1,0 +1,535 @@
+"use client";
+
+import {
+  use,
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  AlertCircle,
+  ArrowLeft,
+  BadgeCheck,
+  BellRing,
+  BriefcaseBusiness,
+  CheckCircle2,
+  Clock3,
+  LoaderCircle,
+  LockKeyhole,
+  Mail,
+  Send,
+  UserRound,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/constants/routes";
+import { authApi } from "@/services/auth.service";
+
+const OTP_LENGTH = 6;
+const RESEND_COOLDOWN_SECONDS = 60;
+
+const features = [
+  {
+    icon: BriefcaseBusiness,
+    title: "Hàng ngàn việc làm chất lượng",
+    description: "Cập nhật mỗi ngày từ các công ty uy tín",
+  },
+  {
+    icon: UserRound,
+    title: "Hồ sơ nổi bật",
+    description: "Tạo CV chuyên nghiệp và thu hút nhà tuyển dụng",
+  },
+  {
+    icon: BellRing,
+    title: "Thông báo việc làm phù hợp",
+    description: "Nhận gợi ý việc làm phù hợp với bạn",
+  },
+] as const;
+
+type VerifyOtpPageProps = {
+  searchParams: Promise<{
+    email?: string;
+    expiresIn?: string;
+  }>;
+};
+
+const formatTime = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+};
+
+export default function VerifyOtpPage({ searchParams }: VerifyOtpPageProps) {
+  const params = use(searchParams);
+  const parsedExpiresIn = Number(params.expiresIn);
+  const initialExpiresIn =
+    Number.isFinite(parsedExpiresIn) && parsedExpiresIn > 0
+      ? Math.min(parsedExpiresIn, 3_600)
+      : 300;
+
+  return (
+    <div className="container mx-auto grid w-full grid-cols-1 items-start gap-8 px-4 py-8 md:px-6 lg:grid-cols-2 lg:gap-16 lg:py-12">
+      <section
+        className="hidden flex-col pb-8 pt-8 lg:flex "
+        aria-labelledby="auth-introduction"
+      >
+        <div className="mb-6 inline-flex w-max items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-primary">
+          <BadgeCheck className="size-4" aria-hidden="true" />
+          <span className="text-sm font-medium">Nền tảng tuyển dụng uy tín</span>
+        </div>
+
+        <h1
+          id="auth-introduction"
+          className="mb-4 text-4xl font-bold leading-tight tracking-tight text-text"
+        >
+          Tạo tài khoản để
+          <br />
+          khám phá cơ hội nghề nghiệp
+          <br />
+          phù hợp với <span className="text-primary">bạn</span>
+        </h1>
+
+        <p className="mb-10 max-w-lg leading-relaxed text-muted">
+          Tham gia Job Platform để ứng tuyển việc làm, lưu tin tuyển dụng và kết
+          nối với nhà tuyển dụng dễ dàng hơn.
+        </p>
+
+        <ul className="space-y-6">
+          {features.map(({ icon: Icon, title, description }) => (
+            <li key={title} className="flex items-start gap-4">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Icon className="size-6" aria-hidden="true" />
+              </span>
+              <div>
+                <h2 className="text-lg font-bold text-text">{title}</h2>
+                <p className="mt-0.5 text-sm text-muted">{description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <VerifyOtpForm
+        email={params.email?.trim() || ""}
+        initialExpiresIn={initialExpiresIn}
+      />
+    </div>
+  );
+}
+
+
+type VerifyOtpFormProps = {
+  email: string;
+  initialExpiresIn: number;
+};
+
+const getOtpStorageKey = (prefix: string, email: string) =>
+  `jp_otp_${prefix}_${email.trim().toLowerCase()}`;
+
+const getOrSetTargetTimestamp = (key: string, durationSeconds: number): number => {
+  if (typeof window === "undefined") return Date.now() + durationSeconds * 1000;
+  try {
+    const saved = sessionStorage.getItem(key);
+    if (saved) {
+      const parsed = Number(saved);
+      if (Number.isFinite(parsed)) {
+        // Đã có mốc thời gian lưu trong session, trả về luôn (kể cả khi đã hết hạn để không bị reset lại 60s khi F5)
+        return parsed;
+      }
+    }
+    const newTarget = Date.now() + durationSeconds * 1000;
+    sessionStorage.setItem(key, String(newTarget));
+    return newTarget;
+  } catch {
+    return Date.now() + durationSeconds * 1000;
+  }
+};
+
+const setTargetTimestamp = (key: string, durationSeconds: number): number => {
+  const newTarget = Date.now() + durationSeconds * 1000;
+  if (typeof window !== "undefined") {
+    try {
+      sessionStorage.setItem(key, String(newTarget));
+    } catch {}
+  }
+  return newTarget;
+};
+
+const MAX_OTP_ATTEMPTS = 5;
+
+const getOtpAttempts = (email: string): number => {
+  if (typeof window === "undefined") return 0;
+  try {
+    const saved = sessionStorage.getItem(getOtpStorageKey("attempts", email));
+    const parsed = Number(saved);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const setOtpAttempts = (email: string, attempts: number) => {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(getOtpStorageKey("attempts", email), String(attempts));
+  } catch {}
+};
+
+const clearOtpStorage = (email: string) => {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(getOtpStorageKey("exp", email));
+    sessionStorage.removeItem(getOtpStorageKey("resend", email));
+    sessionStorage.removeItem(getOtpStorageKey("attempts", email));
+  } catch {}
+};
+
+function VerifyOtpForm({ email, initialExpiresIn }: VerifyOtpFormProps) {
+  const router = useRouter();
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const [digits, setDigits] = useState(() => Array<string>(OTP_LENGTH).fill(""));
+
+  const expKey = getOtpStorageKey("exp", email);
+  const resendKey = getOtpStorageKey("resend", email);
+
+  // Target timestamps cố định
+  const expireTargetRef = useRef<number>(0);
+  const resendTargetRef = useRef<number>(0);
+
+  const calculateRemaining = (targetTime: number) =>
+    Math.max(0, Math.ceil((targetTime - Date.now()) / 1000));
+
+  // Khởi tạo state bằng initialExpiresIn để Server SSR và Client lần đầu render khớp 100%
+  const [expiresIn, setExpiresIn] = useState(initialExpiresIn);
+  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const isLocked = failedAttempts >= MAX_OTP_ATTEMPTS;
+
+  useEffect(() => {
+    // Sau khi mount trên browser, đọc mốc thời gian và số lần nhập sai từ sessionStorage
+    expireTargetRef.current = getOrSetTargetTimestamp(expKey, initialExpiresIn);
+    resendTargetRef.current = getOrSetTargetTimestamp(resendKey, RESEND_COOLDOWN_SECONDS);
+    const attempts = getOtpAttempts(email);
+    setFailedAttempts(attempts);
+
+    if (attempts >= MAX_OTP_ATTEMPTS) {
+      setError("Bạn đã nhập sai mã OTP quá 5 lần. Vui lòng bấm 'Gửi lại mã' để nhận mã mới.");
+    }
+
+    // Cập nhật lại ngay theo timestamp thực tế
+    setExpiresIn(calculateRemaining(expireTargetRef.current));
+    setResendCooldown(calculateRemaining(resendTargetRef.current));
+
+    const timer = window.setInterval(() => {
+      setExpiresIn(calculateRemaining(expireTargetRef.current));
+      setResendCooldown(calculateRemaining(resendTargetRef.current));
+    }, 1_000);
+
+    return () => window.clearInterval(timer);
+  }, [email, expKey, resendKey, initialExpiresIn]);
+
+  const updateDigits = (startIndex: number, value: string) => {
+    if (isLocked) return;
+    const numbers = value.replace(/\D/g, "").slice(0, OTP_LENGTH - startIndex);
+    if (!numbers) return;
+
+    setDigits((current) => {
+      const next = [...current];
+      numbers.split("").forEach((number, offset) => {
+        next[startIndex + offset] = number;
+      });
+      return next;
+    });
+
+    const nextIndex = Math.min(startIndex + numbers.length, OTP_LENGTH - 1);
+    inputRefs.current[nextIndex]?.focus();
+  };
+
+  const handleChange = (index: number, value: string) => {
+    if (isLocked) return;
+    if (!value) {
+      setDigits((current) => {
+        const next = [...current];
+        next[index] = "";
+        return next;
+      });
+      return;
+    }
+
+    updateDigits(index, value);
+  };
+
+  const handleKeyDown = (index: number, event: KeyboardEvent<HTMLInputElement>) => {
+    if (isLocked) return;
+    if (event.key === "Backspace" && !digits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+    if (event.key === "ArrowLeft" && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+    if (event.key === "ArrowRight" && index < OTP_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (index: number, event: ClipboardEvent<HTMLInputElement>) => {
+    if (isLocked) return;
+    event.preventDefault();
+    updateDigits(index, event.clipboardData.getData("text"));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isLocked) {
+      setError("Bạn đã nhập sai mã OTP quá 5 lần. Vui lòng gửi lại mã mới.");
+      return;
+    }
+    const code = digits.join("");
+
+    if (!email) {
+      setError("Không tìm thấy email cần xác thực. Vui lòng đăng ký lại.");
+      return;
+    }
+    if (!/^\d{6}$/.test(code)) {
+      setError("Vui lòng nhập đầy đủ mã xác thực gồm 6 chữ số.");
+      return;
+    }
+    if (expiresIn === 0) {
+      setError("Mã xác thực đã hết hạn. Vui lòng gửi lại mã mới.");
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+    setIsVerifying(true);
+
+    try {
+      const response = await authApi.verifyRegisterCode({ email, code });
+      clearOtpStorage(email);
+      setSuccess(response.message || "Xác thực tài khoản thành công.");
+      router.replace(`${ROUTES.auth.login}?verified=1`);
+    } catch (submitError) {
+      const nextAttempts = failedAttempts + 1;
+      setFailedAttempts(nextAttempts);
+      setOtpAttempts(email, nextAttempts);
+
+      // Reset các ô input OTP về rỗng
+      setDigits(Array<string>(OTP_LENGTH).fill(""));
+
+      if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+        setError("Bạn đã nhập sai mã OTP 5 lần liên tiếp. Vui lòng bấm 'Gửi lại mã' để nhận mã mới.");
+      } else {
+        const remainingAttempts = MAX_OTP_ATTEMPTS - nextAttempts;
+        const backendMsg =
+          submitError instanceof Error
+            ? submitError.message
+            : "Mã OTP không chính xác hoặc đã hết hạn.";
+        setError(`${backendMsg} (Còn lại ${remainingAttempts} lần thử)`);
+        // Tự động focus vào ô đầu tiên để người dùng nhập lại ngay
+        inputRefs.current[0]?.focus();
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!email || resendCooldown > 0 || isResending) return;
+
+    setError("");
+    setSuccess("");
+    setIsResending(true);
+
+    try {
+      const response = await authApi.resendRegisterCode({ email });
+      setDigits(Array<string>(OTP_LENGTH).fill(""));
+      
+      // Reset số lần nhập sai khi gửi mã mới
+      setFailedAttempts(0);
+      setOtpAttempts(email, 0);
+
+      // Đặt timestamp đích mới vào Storage
+      expireTargetRef.current = setTargetTimestamp(expKey, response.data.otpExpiresIn);
+      resendTargetRef.current = setTargetTimestamp(resendKey, RESEND_COOLDOWN_SECONDS);
+
+      setExpiresIn(calculateRemaining(expireTargetRef.current));
+      setResendCooldown(calculateRemaining(resendTargetRef.current));
+      setSuccess(response.message || "Mã xác thực mới đã được gửi.");
+      inputRefs.current[0]?.focus();
+    } catch (resendError) {
+      setError(
+        resendError instanceof Error
+          ? resendError.message
+          : "Không thể gửi lại mã. Vui lòng thử lại.",
+      );
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const codeComplete = digits.every(Boolean);
+
+  return (
+    <section
+      className="justify-self-end w-full max-w-lg rounded-2xl border border-border/70 bg-white p-6 shadow-sm md:p-10"
+      aria-labelledby="verify-otp-title"
+    >
+      <Link
+        href={ROUTES.auth.register}
+        className="inline-flex items-center gap-2 text-sm font-medium text-muted transition hover:text-primary"
+      >
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Quay lại
+      </Link>
+
+      <div className="mt-8 text-center">
+        <div className="relative mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Mail className="size-8" aria-hidden="true" />
+          <span className="absolute bottom-0 right-0 flex size-8 items-center justify-center rounded-full border-2 border-white bg-primary text-white">
+            <LockKeyhole className="size-4" aria-hidden="true" />
+          </span>
+        </div>
+
+        <h1 id="verify-otp-title" className="text-2xl font-bold text-text">
+          Nhập mã xác thực (OTP)
+        </h1>
+        <p className="mt-2 text-sm text-muted">Mã xác thực đã được gửi đến</p>
+        <p className="mt-1 break-all text-sm font-medium text-primary">
+          {email || "Email chưa được cung cấp"}
+        </p>
+      </div>
+
+      <form className="mt-8" onSubmit={handleSubmit} noValidate>
+        <fieldset>
+          <legend className="sr-only">Mã xác thực gồm 6 chữ số</legend>
+          <div className="grid grid-cols-6 gap-2 sm:gap-4">
+            {digits.map((digit, index) => (
+              <input
+                key={index}
+                ref={(element) => {
+                  inputRefs.current[index] = element;
+                }}
+                value={digit}
+                onChange={(event) => handleChange(index, event.target.value)}
+                onKeyDown={(event) => handleKeyDown(index, event)}
+                onPaste={(event) => handlePaste(index, event)}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={1}
+                autoComplete={index === 0 ? "one-time-code" : "off"}
+                aria-label={`Chữ số OTP thứ ${index + 1}`}
+                disabled={isLocked}
+                className="aspect-square min-w-0 rounded-lg border border-border bg-white text-center text-lg font-semibold text-text outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+              />
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted">
+          <Clock3 className="size-4" aria-hidden="true" />
+          <span>
+            {expiresIn > 0 ? "Mã sẽ hết hạn sau" : "Mã xác thực đã hết hạn"}{" "}
+            {expiresIn > 0 ? (
+              <strong className="font-medium text-primary">
+                {formatTime(expiresIn)}
+              </strong>
+            ) : null}
+          </span>
+        </div>
+
+        {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
+        {success ? <StatusMessage tone="success">{success}</StatusMessage> : null}
+
+        <Button
+          type="submit"
+          size="lg"
+          className="mt-6 h-14 w-full text-base font-semibold hover:bg-primary-hover disabled:cursor-not-allowed"
+          disabled={!codeComplete || !email || isVerifying || isLocked}
+        >
+          {isVerifying ? (
+            <>
+              <LoaderCircle className="animate-spin" aria-hidden="true" />
+              Đang xác minh...
+            </>
+          ) : (
+            "Xác minh"
+          )}
+        </Button>
+      </form>
+
+      <div className="my-8 flex items-center gap-4 text-sm text-muted">
+        <span className="h-px flex-1 bg-border" />
+        Không nhận được mã?
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="lg"
+        className="h-14 w-full border-border bg-white text-base text-primary hover:border-primary hover:bg-primary/5 hover:text-primary"
+        onClick={handleResend}
+        disabled={!email || resendCooldown > 0 || isResending}
+      >
+        {isResending ? (
+          <LoaderCircle className="animate-spin" aria-hidden="true" />
+        ) : (
+          <Send aria-hidden="true" />
+        )}
+        {resendCooldown > 0
+          ? `Gửi lại mã (${resendCooldown}s)`
+          : "Gửi lại mã"}
+      </Button>
+    </section>
+  );
+}
+
+function StatusMessage({
+  tone,
+  children,
+}: {
+  tone: "error" | "success";
+  children: ReactNode;
+}) {
+  const Icon = tone === "error" ? AlertCircle : CheckCircle2;
+
+  return (
+    <div
+      role={tone === "error" ? "alert" : "status"}
+      className={`mt-5 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm ${tone === "error"
+        ? "bg-danger/10 text-danger"
+        : "bg-success/10 text-success"
+        }`}
+    >
+      <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+export function VerifyOtpSkeleton() {
+  return (
+    <div
+      className="container mx-auto grid w-full grid-cols-1 items-start gap-8 px-4 py-8 md:px-6 lg:grid-cols-2 lg:gap-16 lg:py-12"
+      aria-busy="true"
+      aria-label="Đang tải trang xác thực OTP"
+    >
+      <section className="hidden min-h-[580px] flex-col pb-8 pt-8 lg:flex" aria-hidden="true">
+        <div className="skeleton h-[580px] w-full rounded-2xl" />
+      </section>
+      <section className="w-full max-w-lg justify-self-end" aria-hidden="true">
+        <div className="skeleton h-[580px] w-full rounded-2xl" />
+      </section>
+    </div>
+  );
+}

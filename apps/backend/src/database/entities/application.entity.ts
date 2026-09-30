@@ -1,0 +1,83 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  Unique,
+  UpdateDateColumn,
+} from "typeorm";
+import { CandidateProfileEntity } from "./candidate-profile.entity";
+import { ResumeEntity } from "./resume.entity";
+import { Job } from "./job.entity";
+import { ApplicationStatus } from "../../common/constants";
+
+@Entity({ name: "applications" })
+@Unique(["candidateId", "jobId"])
+export class ApplicationEntity {
+  @PrimaryGeneratedColumn({ type: "bigint" })
+  id!: string;
+
+  @Column({ name: "candidate_id", type: "bigint" })
+  candidateId!: string;
+
+  @Column({ name: "job_id", type: "bigint" })
+  jobId!: string;
+
+  @Column({ name: "resume_id", type: "bigint" })
+  resumeId!: string;
+
+  @Column({ name: "resume_snapshot_url", type: "text", nullable: false })
+  resumeSnapshotUrl!: string;
+
+  @Column({
+    type: "enum",
+    enum: ApplicationStatus,
+    default: ApplicationStatus.APPLIED,
+  })
+  status!: ApplicationStatus;
+
+  @Column({
+    name: "applied_at",
+    type: "timestamptz",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  appliedAt!: Date;
+
+  /** Ghi chú nội bộ của NTD — không hiển thị cho ứng viên. */
+  @Column({ name: "recruiter_note", type: "text", nullable: true })
+  recruiterNote!: string | null;
+
+  @Column({ name: "recruiter_note_updated_at", type: "timestamptz", nullable: true })
+  recruiterNoteUpdatedAt!: Date | null;
+
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
+  updatedAt!: Date;
+
+  /* Relations */
+  @ManyToOne(
+    () => CandidateProfileEntity,
+    (candidate) => candidate.applications,
+    {
+      onDelete: "RESTRICT",
+    },
+  )
+  @JoinColumn({ name: "candidate_id" })
+  candidate!: CandidateProfileEntity;
+
+  @ManyToOne(() => ResumeEntity, {
+    onDelete: "RESTRICT",
+  })
+  @JoinColumn({ name: "resume_id" })
+  resume!: ResumeEntity;
+
+  @ManyToOne(() => Job, {
+    onDelete: "RESTRICT",
+  })
+  @JoinColumn({ name: "job_id" })
+  job!: Job;
+}
