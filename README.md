@@ -1,147 +1,591 @@
-# Job Platform - Monorepo FE/BE
+# Job Platform
 
-Repo này đã tách rõ:
-- `apps/frontend`: Next.js public + candidate + recruiter (Tailwind CSS + shadcn/ui)
-- `apps/frontend-admin`: Next.js admin, app riêng để không ship code quản trị lên site public
-- `apps/backend`: Express.js + TypeORM + PostgreSQL
+## 1. Giới thiệu
 
-Mục tiêu: dev clone về là chạy nhanh, chia nhóm làm song song, ít đụng code nhau.
+Job Platform là hệ thống nền tảng tuyển dụng việc làm, được xây dựng theo mô hình monorepo gồm:
 
-## 1) Yêu cầu máy
+* **Frontend**: Next.js
+* **Frontend Admin**: Next.js
+* **Backend**: Express.js + TypeORM
+* **Database**: PostgreSQL
+* **Cache / Rate Limit**: Redis *(tùy chọn nếu cấu hình)*
+* **Package Manager**: npm Workspaces
 
-- Node.js LTS (khuyên dùng Node 20+)
-- npm 10+
-- PostgreSQL (local hoặc Supabase)
+### Cấu trúc project
 
-## 2) Cách chạy nhanh (khuyến nghị)
+```text
+job-platform/
+├── apps/
+│   ├── frontend/          # Website dành cho người dùng
+│   ├── frontend-admin/    # Trang quản trị
+│   └── backend/           # API Server
+│
+├── docker-compose.yml     # PostgreSQL / Redis
+├── package.json
+└── README.md
+```
 
-Từ thư mục gốc `job-platform`:
+---
+
+# 2. Yêu cầu môi trường
+
+Cần cài đặt:
+
+* Node.js
+* npm
+* Docker Desktop
+* Git
+
+Kiểm tra phiên bản:
+
+```bash
+node -v
+npm -v
+docker -v
+docker compose version
+```
+
+Khuyến nghị sử dụng Node.js phiên bản LTS.
+
+---
+
+# 3. Clone project
+
+```bash
+git clone https://github.com/tuanbao205/job_platform.git
+cd job-platform
+```
+
+Nếu repository được clone với tên thư mục khác, di chuyển vào đúng thư mục project trước khi chạy các lệnh tiếp theo.
+
+---
+
+# 4. Cài đặt dependencies
+
+Tại thư mục gốc của project:
 
 ```bash
 npm install
-npm run dev:frontend
-npm run dev:frontend-admin
-npm run dev:backend
 ```
 
-- Frontend public: http://localhost:3000
-- Frontend admin: http://localhost:3001
+Do project sử dụng npm Workspaces nên chỉ cần chạy `npm install` một lần tại thư mục root.
 
-## 3) Cách chạy theo từng app (nếu muốn tách riêng FE/BE)
+---
 
-### Frontend (public / candidate / recruiter)
+# 5. Cấu hình Environment
 
-```bash
-cd apps/frontend
-npm install
-npm run dev
-```
+## 5.1. Backend
 
-### Frontend admin
-
-```bash
-cd apps/frontend-admin
-npm install
-npm run dev
-```
-
-### Backend
-
-```bash
-cd apps/backend
-npm install
-npm run dev
-```
-
-## 4) Biến môi trường (env)
-
-### Backend
+Copy file environment mẫu:
 
 ```bash
 cp apps/backend/.env.example apps/backend/.env
 ```
 
-Điền thông tin DB vào `apps/backend/.env`:
-- `DB_HOST`
-- `DB_PORT`
-- `DB_USER` (hoặc `DB_USERNAME`)
-- `DB_PASSWORD`
-- `DB_NAME`
-- `DB_SSL` (`true` nếu dùng Supabase)
-- `SUPABASE_URL` (dùng cho Storage upload ảnh)
-- `SUPABASE_SERVICE_ROLE_KEY` (key server-side, không đưa lên frontend)
-- `SUPABASE_STORAGE_BUCKET` (ví dụ `job-platform-assets`)
-
-### Frontend (cả `frontend` và `frontend-admin`)
+Mở file:
 
 ```bash
-cp apps/frontend/.env.example apps/frontend/.env
-cp apps/frontend-admin/.env.example apps/frontend-admin/.env
+nano apps/backend/.env
 ```
 
-Điền:
-- `NEXT_PUBLIC_API_BASE_URL` (ví dụ `http://localhost:4000`)
-
-## 5) Build
-
-Từ root:
+Hoặc có thể mở bằng VS Code:
 
 ```bash
-npm run build:frontend
-npm run build:frontend-admin
-npm run build:backend
+code apps/backend/.env
 ```
 
-## 6) Cấu trúc thư mục đã chia sẵn theo nghiệp vụ
+Cấu hình tối thiểu cho PostgreSQL:
 
-### Frontend public (`apps/frontend/src`)
+```env
+PORT=4000
 
-Chi tiết Group 3: `apps/frontend/README.md`.
+DB_HOST=127.0.0.1
+DB_PORT=5433
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=job_platform
+DB_SSL=false
 
-**3 module tách biệt — mỗi dev chỉ sửa 1 folder:**
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_STORAGE_BUCKET=job-platform-assets
+SUPABASE_STORAGE_PRIVATE_BUCKET=job-platform-private
 
-| Dev | Folder | Route |
-|-----|--------|-------|
-| Bình | `modules/candidate/` | `/candidate/profile` |
-| Lợi | `modules/resume/` | `/candidate/resume` |
-| Mạnh | `modules/applications/` | `/candidate/applications` |
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
 
-Shared: `services/http.ts`, `lib/*`, `components/ui`, `components/layout`, `app/(public)`, `app/(recruiter)`.
+JWT_ACCESS_SECRET=
 
-### Frontend admin (`apps/frontend-admin/src`)
+COOKIE_SECURE=false
 
-Cùng convention với `apps/frontend`, chỉ chứa màn quản trị:
+GOOGLE_CLIENT_ID=
 
-- `app/(admin)`: dashboard / moderation / account / system
-- `app/(public)/auth/login`: đăng nhập admin
-- `features/admin`: state/logic admin
-- `components/*`, `services`, `hooks`, `types`: giống frontend public, code tách hẳn (bundle riêng)
+MAIL_PROVIDER=console
 
-### Backend (`apps/backend/src`)
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
 
-- `config`: cấu hình hệ thống
-- `common`: constants, dto, guards, middlewares, utils dùng chung
-- `database/entities`: TypeORM entities
-- `database/migrations`: migration scripts
-- `database/seeds`: seed data
-- `database/repositories`: custom repositories
-- `modules/auth`: đăng ký, đăng nhập, xác thực
-- `modules/users`, `roles`, `permissions`: tài khoản & phân quyền (Nhóm 1)
-- `modules/companies`, `job-categories`, `jobs`, `skills`: công ty & tuyển dụng (Nhóm 2)
-- `modules/candidate-profiles`, `resumes`, `educations`, `work-experiences`, `applications`, `saved-jobs`: ứng viên & ứng tuyển (Nhóm 3)
-- `modules/notifications`, `system-logs`, `admin`, `statistics`: admin & hệ thống (Nhóm 4)
-- `routes`: gom route cấp hệ thống
-- `docs`: tài liệu API, nghiệp vụ
-- `tests`: test backend
+TRUST_PROXY=false
+RATE_LIMIT_FACTOR=100
+```
 
-## 7) Mapping ownership theo nhóm (để chia task không chồng chéo)
-
-- Nhóm 1: `users`, `roles`, `permissions`, `role_permissions`
-- Nhóm 2: `companies`, `job_categories`, `jobs`, `job_skills`
-- Nhóm 3: `candidate_profiles`, `resumes`, `educations`, `work_experiences`, `skills`, `candidate_skills`, `applications`, `saved_jobs`
-- Nhóm 4: `notifications`, `system_logs` + chức năng admin
-
-Nguyên tắc: bảng có owner chính, nhóm khác được dùng FK nhưng không tự ý đổi schema bảng owner khi chưa thống nhất.
+> **Lưu ý:** Không commit file `.env` lên GitHub. Chỉ commit các file `.env.example`.
 
 ---
 
+## 5.2. Frontend
+
+Copy environment:
+
+```bash
+cp apps/frontend/.env.example apps/frontend/.env
+```
+
+Kiểm tra và điền các biến môi trường cần thiết theo file:
+
+```text
+apps/frontend/.env.example
+```
+
+Frontend chạy mặc định tại:
+
+```text
+http://localhost:3000
+```
+
+---
+
+## 5.3. Frontend Admin
+
+Copy environment:
+
+```bash
+cp apps/frontend-admin/.env.example apps/frontend-admin/.env
+```
+
+Admin chạy mặc định tại:
+
+```text
+http://localhost:3001
+```
+
+---
+
+# 6. Khởi động PostgreSQL bằng Docker
+
+Project sử dụng PostgreSQL chạy trong Docker.
+
+Kiểm tra Docker Desktop đã được mở, sau đó chạy:
+
+```bash
+docker compose up -d postgres
+```
+
+Kiểm tra container:
+
+```bash
+docker ps
+```
+
+Container PostgreSQL phải ở trạng thái:
+
+```text
+Up
+```
+
+Kiểm tra PostgreSQL:
+
+```bash
+docker exec -it job-platform-postgres psql -U postgres -c "\l"
+```
+
+Nếu database `job_platform` chưa tồn tại, tạo database:
+
+```bash
+docker exec -it job-platform-postgres psql -U postgres -c "CREATE DATABASE job_platform;"
+```
+
+> Nếu database đã tồn tại thì không cần tạo lại.
+
+---
+
+# 7. Chạy Migration
+
+Sau khi PostgreSQL đã chạy, thực hiện migration:
+
+```bash
+npm run migration:run -w backend
+```
+
+Nếu thành công, database sẽ được tạo các bảng cần thiết cho hệ thống.
+
+Có thể kiểm tra database:
+
+```bash
+docker exec -it job-platform-postgres psql -U postgres -d job_platform -c "\dt"
+```
+
+---
+
+# 8. Chạy Backend
+
+Mở terminal tại thư mục root:
+
+```bash
+npm run dev:backend
+```
+
+Nếu chạy thành công sẽ hiển thị:
+
+```text
+Database connected
+Backend listening on port 4000
+```
+
+Backend API:
+
+```text
+http://localhost:4000
+```
+
+---
+
+# 9. Chạy Frontend
+
+Mở **terminal mới**:
+
+```bash
+npm run dev:frontend
+```
+
+Frontend:
+
+```text
+http://localhost:3000
+```
+
+---
+
+# 10. Chạy Frontend Admin
+
+Mở **terminal mới**:
+
+```bash
+npm run dev:frontend-admin
+```
+
+Admin:
+
+```text
+http://localhost:3001
+```
+
+---
+
+# 11. Chạy toàn bộ hệ thống
+
+Cần mở các terminal riêng:
+
+### Terminal 1 – Docker
+
+```bash
+docker compose up -d postgres
+```
+
+### Terminal 2 – Backend
+
+```bash
+npm run dev:backend
+```
+
+### Terminal 3 – Frontend
+
+```bash
+npm run dev:frontend
+```
+
+### Terminal 4 – Admin
+
+```bash
+npm run dev:frontend-admin
+```
+
+Sau khi tất cả chạy thành công:
+
+| Thành phần  | URL                   |
+| ----------- | --------------------- |
+| Frontend    | http://localhost:3000 |
+| Admin       | http://localhost:3001 |
+| Backend API | http://localhost:4000 |
+| PostgreSQL  | localhost:5433        |
+
+---
+
+# 12. Kiểm tra trạng thái Docker
+
+Xem các container đang chạy:
+
+```bash
+docker ps
+```
+
+Dừng các service:
+
+```bash
+docker compose stop
+```
+
+Khởi động lại:
+
+```bash
+docker compose start
+```
+
+Hoặc:
+
+```bash
+docker compose up -d
+```
+
+---
+
+# 13. Một số lệnh thường dùng
+
+### Cài dependencies
+
+```bash
+npm install
+```
+
+### Chạy Backend
+
+```bash
+npm run dev:backend
+```
+
+### Chạy Frontend
+
+```bash
+npm run dev:frontend
+```
+
+### Chạy Admin
+
+```bash
+npm run dev:frontend-admin
+```
+
+### Chạy migration
+
+```bash
+npm run migration:run -w backend
+```
+
+### Kiểm tra Git
+
+```bash
+git status
+```
+
+### Build project
+
+```bash
+npm run build
+```
+
+---
+
+# 14. Troubleshooting
+
+## 14.1. Port PostgreSQL 5432 bị sử dụng
+
+Nếu máy đã có PostgreSQL chạy trên port `5432`, Docker PostgreSQL của project sử dụng:
+
+```text
+5433:5432
+```
+
+Do đó `.env` backend phải sử dụng:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=5433
+```
+
+Không cần tắt PostgreSQL đang chạy trên máy.
+
+---
+
+## 14.2. Database không tồn tại
+
+Nếu xuất hiện lỗi:
+
+```text
+database "job_platform" does not exist
+```
+
+Tạo database:
+
+```bash
+docker exec -it job-platform-postgres psql -U postgres -c "CREATE DATABASE job_platform;"
+```
+
+Sau đó chạy lại:
+
+```bash
+npm run migration:run -w backend
+```
+
+---
+
+## 14.3. Backend không kết nối được database
+
+Kiểm tra PostgreSQL:
+
+```bash
+docker ps
+```
+
+Kiểm tra `.env`:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=5433
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=job_platform
+DB_SSL=false
+```
+
+Sau đó restart backend:
+
+```bash
+npm run dev:backend
+```
+
+---
+
+## 14.4. Migration báo lỗi
+
+Kiểm tra trạng thái migration:
+
+```bash
+npm run migration:show -w backend
+```
+
+Không nên sử dụng:
+
+```bash
+docker compose down -v
+```
+
+nếu database Docker đang chứa các database hoặc dữ liệu khác cần giữ lại.
+
+---
+
+## 14.5. Redis
+
+Một số chức năng của backend có thể sử dụng Redis cho:
+
+* Rate limiting
+* OTP
+* Cache
+
+Nếu project yêu cầu Redis, có thể khởi động:
+
+```bash
+docker compose up -d redis
+```
+
+Kiểm tra:
+
+```bash
+docker ps
+```
+
+Nếu backend được cấu hình để không sử dụng Redis thì không cần khởi động service này.
+
+---
+
+# 15. Quy trình chạy project từ đầu
+
+Sau khi clone project trên một máy mới:
+
+```bash
+git clone https://github.com/tuanbao205/job_platform.git
+cd job-platform
+
+npm install
+
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.example apps/frontend/.env
+cp apps/frontend-admin/.env.example apps/frontend-admin/.env
+
+docker compose up -d postgres
+
+npm run migration:run -w backend
+```
+
+Sau đó mở 3 terminal:
+
+**Terminal 1:**
+
+```bash
+npm run dev:backend
+```
+
+**Terminal 2:**
+
+```bash
+npm run dev:frontend
+```
+
+**Terminal 3:**
+
+```bash
+npm run dev:frontend-admin
+```
+
+Truy cập:
+
+```text
+Frontend:
+http://localhost:3000
+
+Admin:
+http://localhost:3001
+
+Backend:
+http://localhost:4000
+```
+
+---
+
+# 16. Lưu ý khi commit lên GitHub
+
+Không commit các file chứa thông tin bí mật:
+
+```text
+.env
+.env.local
+.env.production
+```
+
+Kiểm tra trước khi commit:
+
+```bash
+git status
+```
+
+Nếu `.env` đang xuất hiện trong danh sách file chuẩn bị commit, hãy kiểm tra `.gitignore` trước khi thực hiện:
+
+```bash
+git add .
+```
+
+Các file mẫu nên được commit:
+
+```text
+.env.example
+```
+
+Không đưa password database, JWT secret, API key hoặc service-role key thật lên GitHub.
