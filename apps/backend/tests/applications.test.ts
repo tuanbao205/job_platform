@@ -57,6 +57,8 @@ describe("Applications & Saved Jobs Module", () => {
   const mockApplicationQueryBuilder = {
     innerJoin: vi.fn().mockReturnThis(),
     leftJoin: vi.fn().mockReturnThis(),
+    leftJoinAndSelect: vi.fn().mockReturnThis(),
+    withDeleted: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     addSelect: vi.fn().mockReturnThis(),
     groupBy: vi.fn().mockReturnThis(),
@@ -111,6 +113,7 @@ describe("Applications & Saved Jobs Module", () => {
   const mockSavedJobRepo = {
     create: vi.fn((data) => ({ id: "1", createdAt: new Date(), ...data })),
     save: vi.fn(async (data) => ({ id: "1", createdAt: new Date(), ...data })),
+    createQueryBuilder: vi.fn(() => mockApplicationQueryBuilder),
     findOne: vi.fn(),
     find: vi.fn(),
     remove: vi.fn(),
