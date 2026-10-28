@@ -121,7 +121,6 @@ Kết quả thực thi thực tế của bộ kiểm thử tự động:
 | **Số Test Case LỖI (ERROR)** | **0** |
 | **Số Test Case BỎ QUA (SKIPPED)** | **0** |
 | **Tỷ lệ PASS** | **100.0%** |
-| **Tổng thời gian thực thi** | **84.35 s** |
 
 Báo cáo chi tiết dạng XML và văn bản được Maven Surefire tự động xuất tại thư mục:
 `target/surefire-reports/`
