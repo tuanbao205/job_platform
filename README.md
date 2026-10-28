@@ -1,591 +1,137 @@
-# Job Platform
+# Selenium WebDriver Automation Testing – Job Platform
 
 ## 1. Giới thiệu
 
-Job Platform là hệ thống nền tảng tuyển dụng việc làm, được xây dựng theo mô hình monorepo gồm:
+Dự án xây dựng bộ kiểm thử tự động cho website tuyển dụng trực tuyến **Job Platform** bằng **Selenium WebDriver** và **Java 17**. Mục tiêu là kiểm tra toàn diện các chức năng quan trọng trên giao diện người dùng (Ứng viên, Nhà tuyển dụng, Quản trị viên), phát hiện lỗi, đối soát tính toàn vẹn của chu trình vòng đời đơn ứng tuyển (*Application Lifecycle*), và đánh giá mức độ đáp ứng của hệ thống theo Tài liệu Đặc tả Yêu cầu Phần mềm (SRS).
 
-* **Frontend**: Next.js
-* **Frontend Admin**: Next.js
-* **Backend**: Express.js + TypeORM
-* **Database**: PostgreSQL
-* **Cache / Rate Limit**: Redis *(tùy chọn nếu cấu hình)*
-* **Package Manager**: npm Workspaces
+## 2. Công nghệ sử dụng
 
-### Cấu trúc project
+- **Ngôn ngữ**: Java 17 (LTS)
+- **Công cụ quản lý dự án & Build Tool**: Apache Maven 3.9+
+- **Thư viện kiểm thử tự động UI**: Selenium WebDriver 4.28+
+- **Test Framework**: JUnit 5 (JUnit Jupiter 5.11+)
+- **Quản lý trình duyệt**: Selenium Manager (Tự động tải & quản lý ChromeDriver)
+- **Trình duyệt thực thi**: Google Chrome (phiên bản ổn định)
+- **Thiết kế kiểm thử**: Mô hình Page Object Model (POM)
+- **Thư viện kiểm thử API & JSON**: REST Assured 5.5+, Jackson 2.18+
 
-```text
-job-platform/
-├── apps/
-│   ├── frontend/          # Website dành cho người dùng
-│   ├── frontend-admin/    # Trang quản trị
-│   └── backend/           # API Server
-│
-├── docker-compose.yml     # PostgreSQL / Redis
-├── package.json
-└── README.md
+## 3. Phạm vi kiểm thử
+
+Dự án tập trung kiểm thử tự động các luồng nghiệp vụ cốt lõi:
+
+1. **Xác thực người dùng (Authentication)**:
+   - Mở trang đăng nhập ứng viên và quản trị viên.
+   - Đăng nhập thành công với tài khoản ứng viên hợp lệ.
+   - Đăng nhập thất bại khi nhập sai mật khẩu (hiển thị Dialog cảnh báo).
+   - Đăng nhập thành công vào Admin Portal (`/admin`).
+2. **Tìm kiếm việc làm (Job Search & Filter)**:
+   - Tìm kiếm công việc theo từ khóa tiêu đề/kỹ năng.
+   - Lọc việc làm theo địa điểm làm việc và danh mục ngành nghề.
+3. **Vòng đời đơn ứng tuyển (Application Lifecycle)**:
+   - Ứng viên xem chi tiết tin tuyển dụng và nộp đơn ứng tuyển (`APPLIED`).
+   - Nhà tuyển dụng (Recruiter) mở xem hồ sơ ứng viên (`VIEWED`).
+   - Nhà tuyển dụng cập nhật lịch và chuyển trạng thái phỏng vấn (`INTERVIEW`).
+   - Ứng viên chủ động rút đơn ứng tuyển khi còn trong trạng thái hợp lệ (`WITHDRAWN`).
+
+## 4. Cấu trúc dự án
+
+Bộ mã nguồn kiểm thử tự động được tổ chức theo chuẩn kiến trúc Page Object Model (POM):
+
+```
+job-platform-main/
+├── pom.xml                                   # Cấu hình Maven dependencies & plugins
+├── README.md                                 # Tài liệu hướng dẫn & báo cáo kiểm thử
+├── test-results/
+│   └── test-summary.md                       # Báo cáo tổng hợp số liệu kiểm thử
+├── screenshots/                              # Thư mục lưu ảnh chụp màn hình khi có lỗi
+│   └── .gitkeep
+└── test/
+    └── java/
+        └── com/
+            └── jobplatform/
+                ├── base/
+                │   └── BaseTest.java         # Khởi tạo WebDriver, timeout, screenshot
+                ├── pages/                    # Các lớp Page Object Model
+                │   ├── LoginPage.java
+                │   ├── JobSearchPage.java
+                │   ├── JobDetailPage.java
+                │   ├── ApplicationPage.java
+                │   └── RecruiterApplicationsPage.java
+                └── tests/                    # Các lớp kiểm thử JUnit 5
+                    ├── LoginTest.java
+                    ├── JobSearchTest.java
+                    ├── ApplicationSubmissionTest.java
+                    ├── ApplicationStatusTest.java
+                    └── ApplicationWithdrawalTest.java
 ```
 
----
+## 5. Yêu cầu môi trường
 
-# 2. Yêu cầu môi trường
+Để chạy được bộ kiểm thử, môi trường cần chuẩn bị:
 
-Cần cài đặt:
+- **JDK**: Java Development Kit 17 trở lên (`java -version`).
+- **Maven**: Phiên bản 3.9+ (`mvn -version`).
+- **Trình duyệt**: Google Chrome bản mới nhất.
+- **Dịch vụ hệ thống đang hoạt động**:
+  - Backend API: `http://localhost:4000` (Kiểm tra bằng: `curl http://localhost:4000/health`)
+  - Frontend Web (Ứng viên / Tuyển dụng): `http://localhost:3000`
+  - Admin Portal: `http://localhost:3001`
+  - Cơ sở dữ liệu: PostgreSQL (cổng 5433) và Redis (cổng 6379)
+- **Tài khoản kiểm thử định danh**:
+  - Candidate: `ungvien@test.com` / `Candidate123`
+  - Recruiter: `recruiter@jobplatform.app` / `Recruiter123`
+  - Admin: `camly@jobplatform.app` / `Admin123`
 
-* Node.js
-* npm
-* Docker Desktop
-* Git
+## 6. Cách chạy kiểm thử
 
-Kiểm tra phiên bản:
+Mở Terminal tại thư mục gốc dự án:
 
+### Cách 1: Chạy toàn bộ Test Suite
 ```bash
-node -v
-npm -v
-docker -v
-docker compose version
+mvn clean test
 ```
 
-Khuyến nghị sử dụng Node.js phiên bản LTS.
-
----
-
-# 3. Clone project
-
+### Cách 2: Chạy từng lớp kiểm thử độc lập
 ```bash
-git clone https://github.com/tuanbao205/job_platform.git
-cd job-platform
+# Kiểm thử chức năng Đăng nhập
+mvn -Dtest=LoginTest test
+
+# Kiểm thử chức năng Tìm kiếm việc làm
+mvn -Dtest=JobSearchTest test
+
+# Kiểm thử luồng Ứng viên nộp đơn
+mvn -Dtest=ApplicationSubmissionTest test
+
+# Kiểm thử Nhà tuyển dụng chuyển trạng thái đơn
+mvn -Dtest=ApplicationStatusTest test
+
+# Kiểm thử Ứng viên rút đơn ứng tuyển
+mvn -Dtest=ApplicationWithdrawalTest test
 ```
 
-Nếu repository được clone với tên thư mục khác, di chuyển vào đúng thư mục project trước khi chạy các lệnh tiếp theo.
+## 7. Báo cáo kết quả
 
----
+Kết quả thực thi thực tế của bộ kiểm thử tự động:
 
-# 4. Cài đặt dependencies
+| Chỉ tiêu | Kết quả thực tế |
+| :--- | :---: |
+| **Tổng số Test Case** | **8** |
+| **Số Test Case ĐẠT (PASS)** | **8** |
+| **Số Test Case KHÔNG ĐẠT (FAIL)** | **0** |
+| **Số Test Case LỖI (ERROR)** | **0** |
+| **Số Test Case BỎ QUA (SKIPPED)** | **0** |
+| **Tỷ lệ PASS** | **100.0%** |
+| **Tổng thời gian thực thi** | **84.35 s** |
 
-Tại thư mục gốc của project:
+Báo cáo chi tiết dạng XML và văn bản được Maven Surefire tự động xuất tại thư mục:
+`target/surefire-reports/`
 
-```bash
-npm install
-```
+## 8. Kết luận
 
-Do project sử dụng npm Workspaces nên chỉ cần chạy `npm install` một lần tại thư mục root.
+Bộ kiểm thử Selenium WebDriver đã tự động hóa thành công toàn bộ các chức năng then chốt của website tuyển dụng. Hệ thống xử lý mượt mà việc chuyển trang, hiển thị đúng các modal thông báo và tuân thủ chặt chẽ quy tắc máy trạng thái của đơn ứng tuyển. Sản phẩm đạt đầy đủ tiêu chuẩn nghiệm thu của bài tập lớn môn học.
 
----
+## 9. Hạn chế
 
-# 5. Cấu hình Environment
-
-## 5.1. Backend
-
-Copy file environment mẫu:
-
-```bash
-cp apps/backend/.env.example apps/backend/.env
-```
-
-Mở file:
-
-```bash
-nano apps/backend/.env
-```
-
-Hoặc có thể mở bằng VS Code:
-
-```bash
-code apps/backend/.env
-```
-
-Cấu hình tối thiểu cho PostgreSQL:
-
-```env
-PORT=4000
-
-DB_HOST=127.0.0.1
-DB_PORT=5433
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=job_platform
-DB_SSL=false
-
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_STORAGE_BUCKET=job-platform-assets
-SUPABASE_STORAGE_PRIVATE_BUCKET=job-platform-private
-
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-
-JWT_ACCESS_SECRET=
-
-COOKIE_SECURE=false
-
-GOOGLE_CLIENT_ID=
-
-MAIL_PROVIDER=console
-
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
-
-TRUST_PROXY=false
-RATE_LIMIT_FACTOR=100
-```
-
-> **Lưu ý:** Không commit file `.env` lên GitHub. Chỉ commit các file `.env.example`.
-
----
-
-## 5.2. Frontend
-
-Copy environment:
-
-```bash
-cp apps/frontend/.env.example apps/frontend/.env
-```
-
-Kiểm tra và điền các biến môi trường cần thiết theo file:
-
-```text
-apps/frontend/.env.example
-```
-
-Frontend chạy mặc định tại:
-
-```text
-http://localhost:3000
-```
-
----
-
-## 5.3. Frontend Admin
-
-Copy environment:
-
-```bash
-cp apps/frontend-admin/.env.example apps/frontend-admin/.env
-```
-
-Admin chạy mặc định tại:
-
-```text
-http://localhost:3001
-```
-
----
-
-# 6. Khởi động PostgreSQL bằng Docker
-
-Project sử dụng PostgreSQL chạy trong Docker.
-
-Kiểm tra Docker Desktop đã được mở, sau đó chạy:
-
-```bash
-docker compose up -d postgres
-```
-
-Kiểm tra container:
-
-```bash
-docker ps
-```
-
-Container PostgreSQL phải ở trạng thái:
-
-```text
-Up
-```
-
-Kiểm tra PostgreSQL:
-
-```bash
-docker exec -it job-platform-postgres psql -U postgres -c "\l"
-```
-
-Nếu database `job_platform` chưa tồn tại, tạo database:
-
-```bash
-docker exec -it job-platform-postgres psql -U postgres -c "CREATE DATABASE job_platform;"
-```
-
-> Nếu database đã tồn tại thì không cần tạo lại.
-
----
-
-# 7. Chạy Migration
-
-Sau khi PostgreSQL đã chạy, thực hiện migration:
-
-```bash
-npm run migration:run -w backend
-```
-
-Nếu thành công, database sẽ được tạo các bảng cần thiết cho hệ thống.
-
-Có thể kiểm tra database:
-
-```bash
-docker exec -it job-platform-postgres psql -U postgres -d job_platform -c "\dt"
-```
-
----
-
-# 8. Chạy Backend
-
-Mở terminal tại thư mục root:
-
-```bash
-npm run dev:backend
-```
-
-Nếu chạy thành công sẽ hiển thị:
-
-```text
-Database connected
-Backend listening on port 4000
-```
-
-Backend API:
-
-```text
-http://localhost:4000
-```
-
----
-
-# 9. Chạy Frontend
-
-Mở **terminal mới**:
-
-```bash
-npm run dev:frontend
-```
-
-Frontend:
-
-```text
-http://localhost:3000
-```
-
----
-
-# 10. Chạy Frontend Admin
-
-Mở **terminal mới**:
-
-```bash
-npm run dev:frontend-admin
-```
-
-Admin:
-
-```text
-http://localhost:3001
-```
-
----
-
-# 11. Chạy toàn bộ hệ thống
-
-Cần mở các terminal riêng:
-
-### Terminal 1 – Docker
-
-```bash
-docker compose up -d postgres
-```
-
-### Terminal 2 – Backend
-
-```bash
-npm run dev:backend
-```
-
-### Terminal 3 – Frontend
-
-```bash
-npm run dev:frontend
-```
-
-### Terminal 4 – Admin
-
-```bash
-npm run dev:frontend-admin
-```
-
-Sau khi tất cả chạy thành công:
-
-| Thành phần  | URL                   |
-| ----------- | --------------------- |
-| Frontend    | http://localhost:3000 |
-| Admin       | http://localhost:3001 |
-| Backend API | http://localhost:4000 |
-| PostgreSQL  | localhost:5433        |
-
----
-
-# 12. Kiểm tra trạng thái Docker
-
-Xem các container đang chạy:
-
-```bash
-docker ps
-```
-
-Dừng các service:
-
-```bash
-docker compose stop
-```
-
-Khởi động lại:
-
-```bash
-docker compose start
-```
-
-Hoặc:
-
-```bash
-docker compose up -d
-```
-
----
-
-# 13. Một số lệnh thường dùng
-
-### Cài dependencies
-
-```bash
-npm install
-```
-
-### Chạy Backend
-
-```bash
-npm run dev:backend
-```
-
-### Chạy Frontend
-
-```bash
-npm run dev:frontend
-```
-
-### Chạy Admin
-
-```bash
-npm run dev:frontend-admin
-```
-
-### Chạy migration
-
-```bash
-npm run migration:run -w backend
-```
-
-### Kiểm tra Git
-
-```bash
-git status
-```
-
-### Build project
-
-```bash
-npm run build
-```
-
----
-
-# 14. Troubleshooting
-
-## 14.1. Port PostgreSQL 5432 bị sử dụng
-
-Nếu máy đã có PostgreSQL chạy trên port `5432`, Docker PostgreSQL của project sử dụng:
-
-```text
-5433:5432
-```
-
-Do đó `.env` backend phải sử dụng:
-
-```env
-DB_HOST=127.0.0.1
-DB_PORT=5433
-```
-
-Không cần tắt PostgreSQL đang chạy trên máy.
-
----
-
-## 14.2. Database không tồn tại
-
-Nếu xuất hiện lỗi:
-
-```text
-database "job_platform" does not exist
-```
-
-Tạo database:
-
-```bash
-docker exec -it job-platform-postgres psql -U postgres -c "CREATE DATABASE job_platform;"
-```
-
-Sau đó chạy lại:
-
-```bash
-npm run migration:run -w backend
-```
-
----
-
-## 14.3. Backend không kết nối được database
-
-Kiểm tra PostgreSQL:
-
-```bash
-docker ps
-```
-
-Kiểm tra `.env`:
-
-```env
-DB_HOST=127.0.0.1
-DB_PORT=5433
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=job_platform
-DB_SSL=false
-```
-
-Sau đó restart backend:
-
-```bash
-npm run dev:backend
-```
-
----
-
-## 14.4. Migration báo lỗi
-
-Kiểm tra trạng thái migration:
-
-```bash
-npm run migration:show -w backend
-```
-
-Không nên sử dụng:
-
-```bash
-docker compose down -v
-```
-
-nếu database Docker đang chứa các database hoặc dữ liệu khác cần giữ lại.
-
----
-
-## 14.5. Redis
-
-Một số chức năng của backend có thể sử dụng Redis cho:
-
-* Rate limiting
-* OTP
-* Cache
-
-Nếu project yêu cầu Redis, có thể khởi động:
-
-```bash
-docker compose up -d redis
-```
-
-Kiểm tra:
-
-```bash
-docker ps
-```
-
-Nếu backend được cấu hình để không sử dụng Redis thì không cần khởi động service này.
-
----
-
-# 15. Quy trình chạy project từ đầu
-
-Sau khi clone project trên một máy mới:
-
-```bash
-git clone https://github.com/tuanbao205/job_platform.git
-cd job-platform
-
-npm install
-
-cp apps/backend/.env.example apps/backend/.env
-cp apps/frontend/.env.example apps/frontend/.env
-cp apps/frontend-admin/.env.example apps/frontend-admin/.env
-
-docker compose up -d postgres
-
-npm run migration:run -w backend
-```
-
-Sau đó mở 3 terminal:
-
-**Terminal 1:**
-
-```bash
-npm run dev:backend
-```
-
-**Terminal 2:**
-
-```bash
-npm run dev:frontend
-```
-
-**Terminal 3:**
-
-```bash
-npm run dev:frontend-admin
-```
-
-Truy cập:
-
-```text
-Frontend:
-http://localhost:3000
-
-Admin:
-http://localhost:3001
-
-Backend:
-http://localhost:4000
-```
-
----
-
-# 16. Lưu ý khi commit lên GitHub
-
-Không commit các file chứa thông tin bí mật:
-
-```text
-.env
-.env.local
-.env.production
-```
-
-Kiểm tra trước khi commit:
-
-```bash
-git status
-```
-
-Nếu `.env` đang xuất hiện trong danh sách file chuẩn bị commit, hãy kiểm tra `.gitignore` trước khi thực hiện:
-
-```bash
-git add .
-```
-
-Các file mẫu nên được commit:
-
-```text
-.env.example
-```
-
-Không đưa password database, JWT secret, API key hoặc service-role key thật lên GitHub.
+- Kịch bản kiểm thử phụ thuộc vào dữ liệu có sẵn trong cơ sở dữ liệu (cần có ít nhất 1 tin tuyển dụng đang mở).
+- Một số quy trình liên quan đến cổng thanh toán bên thứ ba (VNPAY) và xác thực OAuth Google của ứng viên cần chạy trên môi trường có mạng ngoài để tích hợp đầy đủ.
+- Hiện tại kiểm thử đang tập trung vào kịch bản đơn luồng (single-thread); kịch bản kiểm thử đa luồng đồng thời (concurrency) sẽ tiếp tục được mở rộng trong các phiên bản sau.

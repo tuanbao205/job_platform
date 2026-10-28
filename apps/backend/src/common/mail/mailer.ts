@@ -38,7 +38,9 @@ export const sendMail = async (input: {
       return;
 
     case "brevo":
+      console.info(`[mailer:brevo] Đang gửi mail tới ${input.to}...`);
       await sendViaBrevo(config, input);
+      console.info(`[mailer:brevo] Đã gửi mail thành công tới ${input.to}`);
       return;
 
     case "smtp":

@@ -93,19 +93,32 @@ export default function RegisterPage() {
     setSubmitError("");
 
     try {
-      const response = await authApi.register({
+      await authApi.register({
         fullName: values.fullName.trim(),
         email: values.email.trim(),
         password: values.password,
         role: values.role,
       });
 
-      // Thành công thì chuyển thẳng sang trang nhập OTP, không cần hiện thêm gì.
-      const query = new URLSearchParams({
-        email: response.data.email,
-        expiresIn: String(response.data.otpExpiresIn),
-      });
-      router.push(`${ROUTES.auth.verifyOtp}?${query.toString()}`);
+      // Bỏ qua xác thực OTP: Tự động đăng nhập và đưa người dùng vào hệ thống ngay
+      try {
+        const loginResponse = await authApi.login({
+          email: values.email.trim(),
+          password: values.password,
+        });
+
+        const destination =
+          loginResponse.data.user.role === "CANDIDATE"
+            ? ROUTES.candidate.profile
+            : loginResponse.data.user.role === "RECRUITER"
+              ? ROUTES.recruiter.root
+              : ROUTES.home;
+
+        router.replace(destination);
+        return;
+      } catch {
+        router.push(ROUTES.auth.login);
+      }
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "";
 
