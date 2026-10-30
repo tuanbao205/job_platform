@@ -60,13 +60,13 @@ public class LoginPage {
     }
 
     public String getErrorMessage() {
-        By errorLocator = By.xpath("//*[@role='alert' or @role='alertdialog' or contains(text(), 'Đăng nhập thất bại') or contains(text(), 'không đúng') or contains(@class, 'text-danger')]");
+        By errorLocator = By.xpath("//*[@role='alert' or @role='alertdialog' or contains(text(), 'Đăng nhập') or contains(text(), 'không đúng') or contains(text(), 'bị khoá') or contains(text(), 'không có quyền') or contains(@class, 'text-danger')]");
         return wait.until(ExpectedConditions.visibilityOfElementLocated(errorLocator)).getText();
     }
 
     public boolean isErrorMessageDisplayed() {
         try {
-            By errorLocator = By.xpath("//*[@role='alert' or @role='alertdialog' or contains(text(), 'Đăng nhập thất bại') or contains(text(), 'không đúng') or contains(@class, 'text-danger')]");
+            By errorLocator = By.xpath("//*[@role='alert' or @role='alertdialog' or contains(text(), 'Đăng nhập') or contains(text(), 'không đúng') or contains(text(), 'bị khoá') or contains(text(), 'không có quyền') or contains(@class, 'text-danger')]");
             return wait.until(ExpectedConditions.visibilityOfElementLocated(errorLocator)).isDisplayed();
         } catch (Exception e) {
             return false;

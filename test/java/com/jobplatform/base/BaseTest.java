@@ -30,6 +30,8 @@ public abstract class BaseTest {
     // Cấu hình URL mặc định của hệ thống Job Platform
     protected final String BASE_URL_CANDIDATE = "http://localhost:3000";
     protected final String BASE_URL_ADMIN = "http://localhost:3001";
+    protected final String API_BASE_URL = "http://localhost:4000/api/v1";
+    protected final String API_HEALTH_URL = "http://localhost:4000/health";
     protected final Duration TIMEOUT = Duration.ofSeconds(10);
 
     @BeforeEach
