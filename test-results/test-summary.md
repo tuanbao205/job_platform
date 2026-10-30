@@ -73,3 +73,18 @@ $$\text{Tỷ lệ PASS} = \frac{27}{27} \times 100\% = 100.0\%$$
 - Đạt **100% độ bao phủ kiểm thử tự động** đối với toàn bộ 27 kịch bản kiểm thử trong Ma trận tổng thể (Master Test Matrix).
 - Mô hình kiểm thử kết hợp **Hybrid Testing (Selenium WebDriver UI + REST Assured API)** hoạt động cực kỳ ổn định, tốc độ thực thi nhanh (20.97 giây cho toàn bộ 27 test cases).
 - Mã nguồn đáp ứng hoàn hảo tiêu chuẩn lập trình kiểm thử chuyên nghiệp (Page Object Model, Clean Locators, Explicit Waits, JUnit 5 Assertions).
+
+---
+
+## 4. Danh mục bằng chứng & ảnh minh chứng kiểm thử (Screenshots)
+
+| Tên tệp ảnh | Phân hệ / Test Case | Mô tả bằng chứng thực tế | Vị trí trong BC KT.docx |
+| :--- | :--- | :--- | :--- |
+| `POM-architecture-tree.png` | Cấu trúc hệ thống | Sơ đồ kiến trúc Page Object Model (POM) và phân lớp kiểm thử | Hình 4.1 |
+| `TC01-login-success.png` | `TC_LOGIN_01` | Giao diện đăng nhập thành công vào ứng dụng ứng viên và JWT token | Hình 5.2 |
+| `TC02-job-search-results.png` | `TC_JOB_01` | Giao diện tìm kiếm việc làm theo từ khóa và bộ lọc đa tiêu chí | Hình 6.1 |
+| `TC03-application-submitted.png` | `TC_APP_01` | Hộp thoại nộp hồ sơ ứng tuyển trực tuyến & trạng thái `APPLIED` | Hình 6.2 |
+| `TC04-recruiter-application-status.png` | `TC_REC_01` | Nhà tuyển dụng quản lý ứng viên và chuyển trạng thái `INTERVIEW` | Hình 6.3 |
+| `TC05-admin-portal-dashboard.png` | `TC_ADM_01` | Trang quản trị Admin phê duyệt doanh nghiệp `PENDING` sang `ACTIVE` | Hình 6.4 |
+| `TC06-terminal-execution-27-tests.png` | Toàn bộ 27 TCs | Thực thi `mvn clean test` đạt 27/27 PASS (100%) trên Terminal | Hình 5.1 |
+| `TC07-surefire-reports.png` | Báo cáo nghiệm thu | Cấu trúc cây thư mục báo cáo Surefire XML và tệp test-summary.md | Hình 7.1 |

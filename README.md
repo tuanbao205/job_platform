@@ -67,8 +67,15 @@ job-platform-main/
 ├── README.md                                 # Tài liệu hướng dẫn & báo cáo kiểm thử
 ├── test-results/
 │   └── test-summary.md                       # Báo cáo tổng hợp số liệu 27 Test Cases
-├── screenshots/                              # Thư mục lưu ảnh chụp màn hình khi có lỗi
-│   └── .gitkeep
+├── screenshots/                              # Thư mục lưu ảnh chụp màn hình & bằng chứng kiểm thử
+│   ├── POM-architecture-tree.png
+│   ├── TC01-login-success.png
+│   ├── TC02-job-search-results.png
+│   ├── TC03-application-submitted.png
+│   ├── TC04-recruiter-application-status.png
+│   ├── TC05-admin-portal-dashboard.png
+│   ├── TC06-terminal-execution-27-tests.png
+│   └── TC07-surefire-reports.png
 └── test/
     └── java/
         └── com/
@@ -170,6 +177,17 @@ $$\text{Tỷ lệ PASS} = \frac{27}{27} \times 100\% = 100.0\%$$
 
 Toàn bộ báo cáo XML và nhật ký thực thi chi tiết được lưu trữ tại:
 `target/surefire-reports/`
+
+### 7.2. Danh mục bằng chứng & ảnh chụp màn hình kiểm thử (Screenshots)
+Toàn bộ ảnh chụp màn hình minh chứng và sơ đồ kiến trúc đã được chụp và lưu trữ trong thư mục `screenshots/` cũng như nhúng trực tiếp vào tài liệu báo cáo `BC KT.docx`:
+- `screenshots/POM-architecture-tree.png`: Sơ đồ kiến trúc Page Object Model (POM) và phân lớp kiểm thử trong dự án (Hình 4.1 trong BC KT.docx).
+- `screenshots/TC01-login-success.png`: Minh họa đăng nhập ứng viên thành công và xác thực phiên làm việc JWT (Hình 5.2 trong BC KT.docx).
+- `screenshots/TC02-job-search-results.png`: Minh họa giao diện tìm kiếm việc làm và bộ lọc dữ liệu đa chiều (Hình 6.1 trong BC KT.docx).
+- `screenshots/TC03-application-submitted.png`: Minh họa nộp hồ sơ ứng tuyển trực tuyến và xác nhận trạng thái APPLIED (Hình 6.2 trong BC KT.docx).
+- `screenshots/TC04-recruiter-application-status.png`: Minh họa quy trình xử lý đơn ứng tuyển và cập nhật trạng thái phỏng vấn INTERVIEW của Nhà tuyển dụng (Hình 6.3 trong BC KT.docx).
+- `screenshots/TC05-admin-portal-dashboard.png`: Minh họa trang quản trị Admin phê duyệt doanh nghiệp PENDING sang ACTIVE (Hình 6.4 trong BC KT.docx).
+- `screenshots/TC06-terminal-execution-27-tests.png`: Minh họa thực thi kiểm thử tự động toàn bộ 27 Test Cases đạt 100% PASS trên Terminal bằng Maven Surefire (Hình 5.1 trong BC KT.docx).
+- `screenshots/TC07-surefire-reports.png`: Minh họa cấu trúc thư mục báo cáo kiểm thử Surefire Reports và biên bản tổng kết test-summary.md (Hình 7.1 trong BC KT.docx).
 
 ## 8. Kết luận
 
