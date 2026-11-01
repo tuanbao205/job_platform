@@ -88,3 +88,5 @@ $$\text{Tỷ lệ PASS} = \frac{27}{27} \times 100\% = 100.0\%$$
 | `TC05-admin-portal-dashboard.png` | `TC_ADM_01` | Trang quản trị Admin phê duyệt doanh nghiệp `PENDING` sang `ACTIVE` | Hình 6.4 |
 | `TC06-terminal-execution-27-tests.png` | Toàn bộ 27 TCs | Thực thi `mvn clean test` đạt 27/27 PASS (100%) trên Terminal | Hình 5.1 |
 | `TC07-surefire-reports.png` | Báo cáo nghiệm thu | Cấu trúc cây thư mục báo cáo Surefire XML và tệp test-summary.md | Hình 7.1 |
+| `TC08-api-system-health-rate-limit.png` | `TC_API_01`, `TC_API_02` | Kết quả kiểm thử REST Assured API Health Check (200 OK) & Rate Limiting (429) | Phụ lục API |
+| `TC09-test-report-summary-dashboard.png` | Toàn hệ thống | Bảng tổng hợp kết quả kiểm thử tự động trực quan (Automation Dashboard) 100% PASS | Tổng kết nghiệm thu |

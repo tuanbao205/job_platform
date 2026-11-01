@@ -75,7 +75,9 @@ job-platform-main/
 │   ├── TC04-recruiter-application-status.png
 │   ├── TC05-admin-portal-dashboard.png
 │   ├── TC06-terminal-execution-27-tests.png
-│   └── TC07-surefire-reports.png
+│   ├── TC07-surefire-reports.png
+│   ├── TC08-api-system-health-rate-limit.png
+│   └── TC09-test-report-summary-dashboard.png
 └── test/
     └── java/
         └── com/
@@ -188,6 +190,8 @@ Toàn bộ ảnh chụp màn hình minh chứng và sơ đồ kiến trúc đã 
 - `screenshots/TC05-admin-portal-dashboard.png`: Minh họa trang quản trị Admin phê duyệt doanh nghiệp PENDING sang ACTIVE (Hình 6.4 trong BC KT.docx).
 - `screenshots/TC06-terminal-execution-27-tests.png`: Minh họa thực thi kiểm thử tự động toàn bộ 27 Test Cases đạt 100% PASS trên Terminal bằng Maven Surefire (Hình 5.1 trong BC KT.docx).
 - `screenshots/TC07-surefire-reports.png`: Minh họa cấu trúc thư mục báo cáo kiểm thử Surefire Reports và biên bản tổng kết test-summary.md (Hình 7.1 trong BC KT.docx).
+- `screenshots/TC08-api-system-health-rate-limit.png`: Minh họa kết quả kiểm thử REST Assured API Health Check (200 OK) & Rate Limiting (429 Too Many Requests).
+- `screenshots/TC09-test-report-summary-dashboard.png`: Bảng tổng hợp kết quả kiểm thử tự động trực quan (Visual Automation Dashboard) 100% PASS.
 
 ## 8. Kết luận
 
